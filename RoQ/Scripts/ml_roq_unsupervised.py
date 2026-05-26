@@ -441,7 +441,7 @@ fig.patch.set_facecolor(C_BG)
 fig.suptitle("K-Means — Seleção do Número de Clusters (RoQ)",
              fontsize=12, fontweight="bold", color=C_TEXT, y=1.02)
 for ax, vals, ylabel, title, color in [
-    (ax1, inertias,   "Inércia (WCSS)",  "Elbow Method",      C_TEAL),
+    (ax1, inertias,   "WCSS",  "Elbow Method",      C_TEAL),
     (ax2, silhouettes,"Silhouette Score","Silhouette Analysis",C_BLUE),
 ]:
     ax.plot(list(k_range), vals, "o-", color=color, linewidth=2, markersize=7)
