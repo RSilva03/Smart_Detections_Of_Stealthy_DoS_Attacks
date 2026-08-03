@@ -26,7 +26,7 @@ project/
 │   │   ├── dataset_A/          
 |   |   |   ├── dataset_slowloris.csv  # Laboratory Dataset
 |   |   └── dataset_B/
-|   |   |   ├── dataset_test.csv       # IFTO Dataset
+|   |   |   ├── dataset_IFTO.csv       # IFTO Dataset
 │   └── roq/
 │       └── dataset_roq_window_full.csv      # RoQ dataset (window-level features)
 │
@@ -61,16 +61,15 @@ project/
 
 ## Datasets Required
 
-The scripts expect two datasets that are **not included** in this repository
-due to file size. Place them as follows:
+The scripts expect two datasets, which are included in this repository as follows:
 
 | Path | Description |
 |------|-------------|
 | `dataset/slowloris/dataset_A/dataset_slowloris.csv` | Slowloris labelled flow dataset (Laboratory) |
-| `dataset/slowloris/dataset_B/dataset_test.csv` | Slowloris labelled flow dataset (IFTO)
+| `dataset/slowloris/dataset_B/dataset_IFTO.csv` | Slowloris labelled flow dataset (IFTO)
 | `dataset/roq/dataset_roq_window_full.csv` | RoQ window-level feature dataset |
 
-Both files must contain a `label` column (0 = benign, 1 = attack).
+Both files contain a `label` column (0 = benign, 1 = attack).
 
 ---
 
@@ -283,21 +282,6 @@ python scripts/hybrid/visualize_hybrid_results.py && \
 python scripts/hybrid/roq_ablation_kfold_rf.py && \
 python scripts/hybrid/wilcoxon_multiple_corrections.py
 ```
-
----
-
-## Cloud Deployment (Quick Start)
-
-To run on a cloud VM (AWS, GCP, Azure):
-
-### Recommended instance
-| Provider | Instance | vCPU | RAM | Est. cost |
-|----------|----------|------|-----|-----------|
-| AWS | `t3.medium` | 2 | 4 GB | ~$0.04/hr |
-| GCP | `e2-standard-2` | 2 | 8 GB | ~$0.07/hr |
-| Azure | `B2s` | 2 | 4 GB | ~$0.05/hr |
-
-> For the autoencoder and full RSKF pipeline, `t3.large` (8 GB RAM) is recommended.
 
 ### Setup on a fresh Ubuntu 22.04 VM
 
