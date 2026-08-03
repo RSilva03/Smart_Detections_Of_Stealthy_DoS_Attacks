@@ -25,6 +25,14 @@ COLORS_AE     = [C_TEAL, C_BLUE, C_GREEN]
 RANDOM_STATE = 42
 RECALL_MIN   = 0.95 
 
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+RESULTS_DIR = os.path.join(BASE_DIR, 'results')
+PLOTS_DIR = os.path.join(RESULTS_DIR, 'plots_unsupervised_roq')
+DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'roq', 'dataset_roq_window_full.csv')
+
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(PLOTS_DIR, exist_ok=True)
+
 ALL_FEATURES = [
     "n_pkts", "bytes_total", "tcp_bytes", "pkts_rate", "bytes_rate",
     "pkt_size_mean", "pkt_size_std", "iat_mean", "iat_std", "iat_cv",
@@ -62,10 +70,9 @@ def styled_ax(ax, title="", xlabel="", ylabel=""):
 def save_fig(fig, fname):
     fig.savefig(fname, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
-    print(f"  ✓ {fname}")
+    print(f"{fname}")
 
 def get_best_thresholds(errors, y_true, recall_min=RECALL_MIN):
-    """Sweep percentil 50–99.75; retorna (thresh_maxf1, thresh_lowfnr, sweep_df)"""
     rows = []
     for pct in np.arange(50, 100, 0.25):
         t    = np.percentile(errors, pct)
@@ -90,10 +97,10 @@ try:
     from torch.utils.data import DataLoader, TensorDataset
     TORCH  = True
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"  PyTorch {torch.__version__} | device: {DEVICE}")
+    print(f"PyTorch {torch.__version__} | device: {DEVICE}")
 except ImportError:
     TORCH = False
-    print("  [AVISO] PyTorch não disponível — fallback MLPRegressor")
+    print("[NOTICE] PyTorch unavailable — fallback MLPRegressor")
 
 if TORCH:
     class Autoencoder(nn.Module):
@@ -159,14 +166,14 @@ def train_autoencoder(X_benign, X_all, hidden, dropout=0.0,
 
 
 print("=" * 65)
-print("  RoQ Unsupervised Detection Pipeline (v2 — AE Variants)")
+print("RoQ Unsupervised Detection Pipeline (v2 — AE Variants)")
 print("=" * 65)
 
-df = pd.read_csv(".././dataset_roq_window_full.csv")
+df = pd.read_csv(DATASET_PATH)
 avail_all = [f for f in ALL_FEATURES if f in df.columns]
 avail_top = [f for f in TOP_FEATURES if f in df.columns]
 miss = [f for f in ALL_FEATURES if f not in df.columns]
-if miss: print(f"  [AVISO] Features não encontradas (ignoradas): {miss}")
+if miss: print(f"[NOTICE] Features not found (ignored): {miss}")
 
 df = df.dropna(subset=avail_all + ["label"])
 X_all_raw = df[avail_all].values
@@ -223,7 +230,7 @@ for c in np.arange(0.02, 0.51, 0.02):
     })
 
 sweep_df    = pd.DataFrame(sweep_rows)
-sweep_df.to_csv("../unsup_iforest_sweep.csv", index=False)
+sweep_df.to_csv(os.path.join(RESULTS_DIR, "unsup_iforest_sweep_roq.csv"), index=False)
 best_contam = sweep_df.loc[sweep_df["F1"].idxmax(), "contamination"]
 
 ifo_final = IsolationForest(contamination=best_contam, n_estimators=300,
@@ -238,7 +245,7 @@ print(f"  contam={best_contam} | F1={ifo_m['F1']} | AUC={ifo_m['AUC']} | "
       f"Recall={ifo_m['Recall']} | FPR={ifo_m['FPR']}")
 
 
-print("\n[3/3] Autoencoder — 3 variantes ...")
+print("\n[3/3] Autoencoder — 3 variants ...")
 
 AE_VARIANTS = [
     {"name": "V1 — Original",       "X": X_all_sc, "hidden": [64,32,16,32,64], "dropout": 0.0},
@@ -294,10 +301,10 @@ for var in AE_VARIANTS:
         best_ae_variant = var
 
 ae_vars_df = pd.DataFrame(ae_variant_results)
-ae_vars_df.to_csv("../unsup_ae_variants_results.csv", index=False)
+ae_vars_df.to_csv(os.path.join(RESULTS_DIR, "unsup_ae_variants_results_roq.csv"), index=False)
 
 best_name = best_ae_variant["name"]
-print(f"\n Melhor variante AE: {best_name} (F1={best_ae_f1})")
+print(f"\n Best variant AE: {best_name} (F1={best_ae_f1})")
 
 ae_errors_best = best_ae_variant["errors"]
 ae_pred_best   = best_ae_variant["pred_f1"]
@@ -307,12 +314,12 @@ results.append(ae_m_best)
 
 cols = ["Model","Accuracy","Precision","Recall","F1","AUC","FPR","FNR","TP","TN","FP","FN"]
 results_df = pd.DataFrame(results)[cols]
-results_df.to_csv("../roq_unsupervised_results.csv", index=False)
-print("\n roq_unsupervised_results.csv guardado")
+results_df.to_csv(os.path.join(RESULTS_DIR, "roq_unsupervised_results_roq.csv"), index=False)
+print(f"\n {os.path.join(RESULTS_DIR, 'roq_unsupervised_results_roq.csv')} guardado")
 print(results_df[["Model","F1","AUC","FPR","FNR","Recall"]].to_string(index=False))
 
 
-print("\nA gerar gráficos...")
+print("\nA Generate charts...")
 
 model_names  = ["KMeans", "IsolationForest", f"Autoencoder\n({best_name})"]
 preds_list   = [km_pred, ifo_pred, ae_pred_best]
@@ -320,7 +327,7 @@ scores_list  = [km_score, ifo_score, ae_errors_best]
 
 fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
 fig.patch.set_facecolor(C_BG)
-fig.suptitle("Matrizes de Confusão — Modelos Não Supervisionados (RoQ)",
+fig.suptitle("Confusion Matrix — Unsupervised Models (RoQ)",
              fontsize=13, fontweight="bold", color=C_TEXT, y=1.02)
 
 for ax, name, pred, color in zip(axes, model_names, preds_list, COLORS_MODELS):
@@ -334,14 +341,14 @@ for ax, name, pred, color in zip(axes, model_names, preds_list, COLORS_MODELS):
                     ha="center", va="center", fontsize=10, fontweight="bold",
                     color="white" if v > cm_v.max() * 0.5 else C_TEXT)
     ax.set_xticks([0,1]); ax.set_yticks([0,1])
-    ax.set_xticklabels(["Pred Benigno","Pred Ataque"], fontsize=8, color=C_TEXT)
-    ax.set_yticklabels(["Real Benigno","Real Ataque"], fontsize=8, color=C_TEXT,
+    ax.set_xticklabels(["Pred Benign","Pred Atack"], fontsize=8, color=C_TEXT)
+    ax.set_yticklabels(["Real Benign","Real Atack"], fontsize=8, color=C_TEXT,
                        rotation=90, va="center")
     ax.set_title(name, fontsize=10, fontweight="bold", color=C_TEXT, pad=8)
     ax.spines[:].set_color(C_DIV)
 
 plt.tight_layout()
-save_fig(fig, "../unsup_confusion_matrices.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_confusion_matrices.png"))
 
 fig, ax = plt.subplots(figsize=(7, 6))
 fig.patch.set_facecolor(C_BG); ax.set_facecolor(C_SURF)
@@ -357,7 +364,7 @@ for name, score, color in zip(roc_names, scores_list, COLORS_MODELS):
 ax.set_xlim(-0.02, 1.02); ax.set_ylim(-0.02, 1.02)
 ax.set_xlabel("False Positive Rate", fontsize=10, color=C_MUTED)
 ax.set_ylabel("True Positive Rate",  fontsize=10, color=C_MUTED)
-ax.set_title("Curvas ROC — Modelos Não Supervisionados (RoQ)",
+ax.set_title("ROC Curves — Unsupervised Models (RoQ)",
              fontsize=11, fontweight="bold", color=C_TEXT, pad=10)
 ax.legend(fontsize=9, framealpha=0.9, loc="lower right")
 ax.tick_params(colors=C_TEXT)
@@ -365,13 +372,13 @@ ax.grid(color=C_DIV, linewidth=0.5, linestyle="--")
 ax.spines[["top","right"]].set_visible(False)
 ax.spines[["left","bottom"]].set_color(C_DIV)
 plt.tight_layout()
-save_fig(fig, "../unsup_roc_curves.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_roc_curves.png"))
 
-titles_pca = ["K-Means (clusters)", "Isolation Forest (anomalias)",
+titles_pca = ["K-Means (clusters)", "Isolation Forest (anomalies)",
               f"Autoencoder — {best_name}"]
 fig, axes = plt.subplots(1, 3, figsize=(16, 5))
 fig.patch.set_facecolor(C_BG)
-fig.suptitle("PCA 2D — Separação Ataque vs Benigno (RoQ)",
+fig.suptitle("PCA 2D — Separation Atack vs Benign (RoQ)",
              fontsize=13, fontweight="bold", color=C_TEXT, y=1.02)
 
 for ax, pred, title in zip(axes, preds_list, titles_pca):
@@ -379,7 +386,7 @@ for ax, pred, title in zip(axes, preds_list, titles_pca):
     xp, yp, pp, yt = X_pca[idx,0], X_pca[idx,1], pred[idx], y[idx]
     mask_b = pp == 0
     ax.scatter(xp[mask_b], yp[mask_b], c=C_SURF, edgecolors=C_DIV,
-               s=8, linewidths=0.3, alpha=0.6, label="Pred Benigno", zorder=1)
+               s=8, linewidths=0.3, alpha=0.6, label="Pred Benign", zorder=1)
     correct = (pp == yt)
     tp_m = (pp == 1) & correct
     fp_m = (pp == 1) & ~correct
@@ -391,7 +398,7 @@ for ax, pred, title in zip(axes, preds_list, titles_pca):
               ylabel=f"PC2 ({var_e[1]*100:.1f}%)")
     ax.legend(fontsize=7, markerscale=1.5, framealpha=0.8)
 plt.tight_layout()
-save_fig(fig, "../unsup_pca_clusters.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_pca_clusters.png"))
 
 best_t_f1  = best_ae_variant["t_f1"]
 best_sweep = best_ae_variant["sweep"]
@@ -399,7 +406,7 @@ best_pct   = best_sweep.loc[best_sweep["F1"].idxmax(), "pct"]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 fig.patch.set_facecolor(C_BG)
-fig.suptitle(f"Threshold Sweep — IForest e Autoencoder [{best_name}] (RoQ)",
+fig.suptitle(f"Threshold Sweep — IForest & Autoencoder [{best_name}] (RoQ)",
              fontsize=12, fontweight="bold", color=C_TEXT, y=1.02)
 
 for ax, df_s, xcol, xlabel, best_val, color, title in [
@@ -412,33 +419,33 @@ for ax, df_s, xcol, xlabel, best_val, color, title in [
         ax.plot(df_s[xcol], df_s["Precision"],color=C_GOLD, linewidth=1.5, linestyle="--", label="Precision")
     ax.plot(df_s[xcol], df_s["Recall"],   color=C_RED,  linewidth=1.5, linestyle=":",  label="Recall")
     ax.axvline(x=best_val, color=C_TEXT, linewidth=1, linestyle="-.", alpha=0.7,
-               label=f"Melhor ({xcol}={best_val:.2f})")
+               label=f"Best ({xcol}={best_val:.2f})")
     styled_ax(ax, title=title, xlabel=xlabel, ylabel="Score")
     ax.set_ylim(0, 1.05)
     ax.legend(fontsize=8, framealpha=0.9)
 plt.tight_layout()
-save_fig(fig, "../unsup_threshold_sweep.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_threshold_sweep.png"))
 
 best_thresh = best_ae_variant["t_f1"]
 fig, ax = plt.subplots(figsize=(9, 5))
 fig.patch.set_facecolor(C_BG); ax.set_facecolor(C_SURF)
 cap = np.percentile(ae_errors_best, 99)
 errs_plot = np.clip(ae_errors_best, 0, cap)
-ax.hist(errs_plot[y==0], bins=80, alpha=0.6, color=C_BLUE, label="Benigno", density=True)
-ax.hist(errs_plot[y==1], bins=80, alpha=0.7, color=C_RED,  label="Ataque",  density=True)
+ax.hist(errs_plot[y==0], bins=80, alpha=0.6, color=C_BLUE, label="Benign", density=True)
+ax.hist(errs_plot[y==1], bins=80, alpha=0.7, color=C_RED,  label="Atack",  density=True)
 ax.axvline(x=min(best_thresh, cap), color=C_TEXT, linewidth=1.5, linestyle="-.",
            label=f"Threshold max-F1 ({best_thresh:.4f})")
 ax.axvline(x=min(best_ae_variant["t_fnr"], cap), color=C_GREEN, linewidth=1.5, linestyle=":",
            label=f"Threshold Recall≥{RECALL_MIN} ({best_ae_variant['t_fnr']:.4f})")
-styled_ax(ax, title=f"Autoencoder — Distribuição Erro de Reconstrução [{best_name}] (RoQ)",
-          xlabel="Erro MSE", ylabel="Densidade")
+styled_ax(ax, title=f"Autoencoder — Distribution of Reconstruction Error [{best_name}] (RoQ)",
+          xlabel="MSE Error", ylabel="Density")
 ax.legend(fontsize=9, framealpha=0.9)
 plt.tight_layout()
-save_fig(fig, "../unsup_ae_reconstruction.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_ae_reconstruction.png"))
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
 fig.patch.set_facecolor(C_BG)
-fig.suptitle("K-Means — Seleção do Número de Clusters (RoQ)",
+fig.suptitle("K-Means — Selection of the Number of Clusters (RoQ)",
              fontsize=12, fontweight="bold", color=C_TEXT, y=1.02)
 for ax, vals, ylabel, title, color in [
     (ax1, inertias,   "WCSS",  "Elbow Method",      C_TEAL),
@@ -446,11 +453,11 @@ for ax, vals, ylabel, title, color in [
 ]:
     ax.plot(list(k_range), vals, "o-", color=color, linewidth=2, markersize=7)
     ax.axvline(x=best_k, color=C_TEXT, linewidth=1, linestyle="-.", alpha=0.7,
-               label=f"k={best_k} (escolhido)")
-    styled_ax(ax, title=title, xlabel="Número de clusters (k)", ylabel=ylabel)
+               label=f"k={best_k} (chosen)")
+    styled_ax(ax, title=title, xlabel="Number of clusters (k)", ylabel=ylabel)
     ax.legend(fontsize=8)
 plt.tight_layout()
-save_fig(fig, "../unsup_kmeans_selection.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_kmeans_selection.png"))
 
 metrics_show  = ["F1", "AUC", "FPR", "FNR"]
 metric_colors = [C_TEAL, C_BLUE, C_RED, C_GOLD]
@@ -459,7 +466,7 @@ var_labels    = ["V1\nOriginal", "V2\nTop Feat.", "V3\nBN+Dropout"]
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
 fig.patch.set_facecolor(C_BG)
-fig.suptitle("Comparação das 3 Variantes do Autoencoder — RoQ",
+fig.suptitle("Comparison of the 3 Autoencoder Variants — RoQ",
              fontsize=13, fontweight="bold", color=C_TEXT, y=1.02)
 
 for ax, mode in zip(axes, modes):
@@ -480,28 +487,32 @@ for ax, mode in zip(axes, modes):
     if best_idx:
         ax.axvspan(best_idx[0] - 0.45, best_idx[0] + 0.45, alpha=0.07,
                    color=C_GREEN, zorder=0)
-        ax.text(best_idx[0], 1.10, "★ Melhor", ha="center", fontsize=8,
+        ax.text(best_idx[0], 1.10, "★ Best", ha="center", fontsize=8,
                 color=C_GREEN, fontweight="bold")
 
-    styled_ax(ax, title=f"Threshold: {mode}", xlabel="Variante", ylabel="Score")
+    styled_ax(ax, title=f"Threshold: {mode}", xlabel="Variant", ylabel="Score")
     ax.legend(fontsize=8, framealpha=0.9)
 
 plt.tight_layout()
-save_fig(fig, "../unsup_ae_variants_comparison.png")
+save_fig(fig, os.path.join(PLOTS_DIR, "unsup_ae_variants_comparison.png"))
 
 
 print("\n" + "=" * 65)
-print(f"  Melhor Autoencoder: {best_name}")
+print(f"  Best Autoencoder: {best_name}")
 print(f"  F1={best_ae_f1} | AUC={ae_m_best['AUC']} | "
       f"FNR={ae_m_best['FNR']} | FPR={ae_m_best['FPR']}")
-print("\n  Ficheiros gerados:")
+print("\n  Files generated:")
 for f in [
-    "roq_unsupervised_results.csv", "unsup_ae_variants_results.csv",
-    "unsup_iforest_sweep.csv",
-    "unsup_confusion_matrices.png", "unsup_roc_curves.png",
-    "unsup_pca_clusters.png",       "unsup_threshold_sweep.png",
-    "unsup_ae_reconstruction.png",  "unsup_kmeans_selection.png",
-    "unsup_ae_variants_comparison.png",
+    os.path.join(RESULTS_DIR, "roq_unsupervised_results_roq.csv"),
+    os.path.join(RESULTS_DIR, "unsup_ae_variants_results_roq.csv"),
+    os.path.join(RESULTS_DIR, "unsup_iforest_sweep_roq.csv"),
+    os.path.join(PLOTS_DIR, "unsup_confusion_matrices.png"),
+    os.path.join(PLOTS_DIR, "unsup_roc_curves.png"),
+    os.path.join(PLOTS_DIR, "unsup_pca_clusters.png"),
+    os.path.join(PLOTS_DIR, "unsup_threshold_sweep.png"),
+    os.path.join(PLOTS_DIR, "unsup_ae_reconstruction.png"),
+    os.path.join(PLOTS_DIR, "unsup_kmeans_selection.png"),
+    os.path.join(PLOTS_DIR, "unsup_ae_variants_comparison.png"),
 ]:
     status = "✓" if os.path.exists(f) else "–"
     print(f"    {status}  {f}")

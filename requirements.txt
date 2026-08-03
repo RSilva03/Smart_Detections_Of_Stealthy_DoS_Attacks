@@ -1,0 +1,25 @@
+# Core data science
+pandas>=1.5.0
+numpy>=1.23.0
+scipy>=1.9.0
+
+# Machine Learning
+scikit-learn>=1.2.0
+imbalanced-learn>=0.10.0
+lightgbm>=3.3.0
+
+# Deep Learning (Autoencoder)
+torch>=2.0.0
+
+# Hybrid / Fuzzy Logic
+scikit-fuzzy>=0.4.2
+
+# Explainability
+shap>=0.41.0
+
+# Statistics
+statsmodels>=0.13.0
+
+# Visualisation
+matplotlib>=3.6.0
+seaborn>=0.12.0

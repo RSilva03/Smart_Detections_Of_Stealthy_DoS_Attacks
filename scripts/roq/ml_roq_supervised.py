@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from lightgbm import LGBMClassifier
+import os
 import warnings, csv
 warnings.filterwarnings("ignore")
 
@@ -22,7 +23,12 @@ FEATURES = ["n_pkts", "bytes_total", "tcp_bytes", "pkts_rate", "bytes_rate", "pk
             "pkt_size_std", "iat_mean", "iat_std", "iat_cv", "burst_peak_ratio", "burst_cv", 
             "bytes_rate_cv", "tcp_ratio"]
 
-df = pd.read_csv("../dataset_roq_window_full.csv").dropna(subset=FEATURES + ["label"])
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+RESULTS_DIR = os.path.join(BASE_DIR, 'results')
+DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'roq', 'dataset_roq_window_full.csv')
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+df = pd.read_csv(DATASET_PATH).dropna(subset=FEATURES + ["label"])
 X = df[FEATURES].values
 y = df["label"].values
 
@@ -90,9 +96,10 @@ for name, model in models.items():
     print(f"{name:20s} | F1={row['F1_mean']:.4f}±{row['F1_std']:.4f} | AUC={row['AUC_mean']:.4f}±{row['AUC_std']:.4f} | FPR={row['FPR_mean']:.4f}±{row['FPR_std']:.4f} | FNR={row['FNR_mean']:.4f}±{row['FNR_std']:.4f}")
 
 results_df = pd.DataFrame(results).sort_values("F1_mean", ascending=False)
-results_df.to_csv("../roq_supervised_results.csv", index=False)
-print("\nGuardado em: roq_supervised_results.csv")
-print("\n-- Tabela final (média ± std) --------------------")
+results_csv = os.path.join(RESULTS_DIR, 'roq_supervised_results.csv')
+results_df.to_csv(results_csv, index=False)
+print(f"\nSaved in: {results_csv}")
+print("\n-- Final Table (mean ± std) --------------------")
 for _, r in results_df.iterrows():
     print(f"{r['Model']:20s} | F1={r['F1_mean']:.4f}±{r['F1_std']:.4f} |"
           f" Recall={r['REC_mean']:.4f}±{r['REC_std']:.4f} |" 
