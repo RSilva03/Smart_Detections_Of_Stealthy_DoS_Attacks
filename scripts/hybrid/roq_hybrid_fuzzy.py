@@ -61,7 +61,7 @@ dist_te = distance_score_fn(X_te_s)
 
 knn = KNeighborsClassifier(n_neighbors=5, n_jobs=-1)
 
-rf = RandomForestClassifier(n_estimators=200, max_depth=15, n_jobs=-1, random_state=SEED)
+rf = RandomForestClassifier(n_estimators=100, class_weight="balanced", random_state=SEED, n_jobs=-1)
 
 svm = SVC(kernel="rbf", probability=True, class_weight="balanced", random_state=SEED)
 
