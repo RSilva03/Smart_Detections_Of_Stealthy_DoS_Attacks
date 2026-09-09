@@ -6,7 +6,7 @@ warnings.filterwarnings("ignore")
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix)
@@ -59,34 +59,34 @@ def distance_score_fn(X_scaled):
 dist_val = distance_score_fn(X_val_s)
 dist_te = distance_score_fn(X_te_s)
 
-mlp = MLPClassifier(hidden_layer_sizes=(128,64,32), activation='relu', solver='adam', max_iter=500, early_stopping=True, validation_fraction=0.1, random_state=SEED)
+knn = KNeighborsClassifier(n_neighbors=5, n_jobs=-1)
 
 rf = RandomForestClassifier(n_estimators=200, max_depth=15, n_jobs=-1, random_state=SEED)
 
 svm = SVC(kernel="rbf", probability=True, class_weight="balanced", random_state=SEED)
 
-mlp.fit(X_tr_s, y_tr)
+knn.fit(X_tr_s, y_tr)
 rf.fit(X_tr_s, y_tr)
 svm.fit(X_tr_s, y_tr)
 
-mlp_score_val = mlp.predict_proba(X_val_s)[:, 1]
+knn_score_val = knn.predict_proba(X_val_s)[:, 1]
 rf_score_val = rf.predict_proba(X_val_s)[:, 1]
 svm_score_val = svm.predict_proba(X_val_s)[:, 1]
-mlp_score_te = mlp.predict_proba(X_te_s)[:, 1]
+knn_score_te = knn.predict_proba(X_te_s)[:, 1]
 rf_score_te = rf.predict_proba(X_te_s)[:, 1]
 svm_score_te = svm.predict_proba(X_te_s)[:, 1]
 
-class AutoencoderV3(nn.Module):
+class AutoencoderV1(nn.Module):
     def __init__(self, n_in):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(n_in, 64), nn.BatchNorm1d(64), nn.ReLU(), nn.Dropout(0.2),
-            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ReLU(), nn.Dropout(0.2),
-            nn.Linear(32, 16), nn.BatchNorm1d(16), nn.ReLU()
+            nn.Linear(n_in, 64), nn.ReLU(),
+            nn.Linear(64, 32), nn.ReLU(),
+            nn.Linear(32, 16), nn.ReLU()
         )
         self.decoder = nn.Sequential(
-            nn.Linear(16, 32), nn.BatchNorm1d(32), nn.ReLU(), nn.Dropout(0.2),
-            nn.Linear(32, 64), nn.BatchNorm1d(64), nn.ReLU(), nn.Dropout(0.2),
+            nn.Linear(16, 32), nn.ReLU(),
+            nn.Linear(32, 64), nn.ReLU(),
             nn.Linear(64, n_in)
         )
 
@@ -94,7 +94,7 @@ class AutoencoderV3(nn.Module):
         z = self.encoder(x)
         return self.decoder(z)
 
-ae = AutoencoderV3(len(FEATURES))
+ae = AutoencoderV1(len(FEATURES))
 opt = torch.optim.Adam(ae.parameters(), lr=1e-3, weight_decay=1e-5)
 loss_fn = nn.MSELoss()
 
@@ -199,7 +199,7 @@ def evaluate_variants(name, cls_val, cls_te, dist_val, dist_te, y_val, y_te):
     }
 
 variants = [
-    ("Fuzzy + MLP + Distance", mlp_score_val, mlp_score_te),
+    ("Fuzzy + KNN + Distance", knn_score_val, knn_score_te),
     ("Fuzzy + RF + Distance", rf_score_val, rf_score_te),
     ("Fuzzy + SVM + Distance", svm_score_val, svm_score_te),
     ("Fuzzy + AE + Distance", ae_score_val, ae_score_te),
