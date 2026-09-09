@@ -20,8 +20,8 @@ os.makedirs(PLOTS_DIR, exist_ok=True)
 
 df = pd.read_csv(os.path.join(RESULTS_DIR, 'roq_hybrid_rskf_all_folds.csv'))
 
-VARIANTS = ["RF Only", "RF + Distance", "Fuzzy + RF", "Fuzzy + RF + Distance"]
-BASELINE = "RF Only"
+VARIANTS = ["SVM Only", "SVM + Distance", "Fuzzy + SVM", "Fuzzy + SVM + Distance"]
+BASELINE = "SVM Only"
 
 PRIMARY_METRICS   = ["FPR", "FNR"]
 SECONDARY_METRICS = ["F1", "AUC", "Precision", "Recall"]
@@ -32,11 +32,11 @@ LOWER_IS_BETTER = {"FPR": True, "FNR": True,
                    "Precision": False, "Recall": False}
 
 PALETTE = {
-    "RF + Distance":        "#F58518",
-    "Fuzzy + RF":           "#54A24B",
-    "Fuzzy + RF + Distance":"#E45756",
+    "SVM + Distance":         "#F58518",
+    "Fuzzy + SVM":            "#54A24B",
+    "Fuzzy + SVM + Distance": "#E45756",
 }
-V3 = ["RF + Distance", "Fuzzy + RF", "Fuzzy + RF + Distance"]
+V3 = ["SVM + Distance", "Fuzzy + SVM", "Fuzzy + SVM + Distance"]
 
 
 pivot = {}
@@ -262,7 +262,7 @@ for i, variant in enumerate(V3):
                 fontsize=10, color=color, fontweight="bold" if sig else "normal")
 
 ax.axvline(len(PRIMARY_METRICS), color="white", linewidth=3, linestyle="--")
-ax.set_title("Cliff's Delta — vs RF Only  |  * = p_corr < 0.05\n"
+ax.set_title("Cliff's Delta — vs SVM Only  |  * = p_corr < 0.05\n"
              "FPR/FNR positive = variant reduces error  |  F1/AUC positive = variant improvement",
              fontsize=11, fontweight="bold")
 ax.set_xlabel("Metric"); ax.set_ylabel("")
@@ -272,7 +272,7 @@ plt.close()
 
 
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-fig.suptitle("Distribution of paired differences vs RF Only\n(50 pairs: 5 repetitions × 10 folds)",
+fig.suptitle("Distribution of paired differences vs SVM Only\n(50 pairs: 5 repetitions × 10 folds)",
              fontsize=13, fontweight="bold")
 
 for ax, metric in zip(axes, ["FPR", "F1"]):
@@ -296,7 +296,7 @@ for ax, metric in zip(axes, ["FPR", "F1"]):
     ax.set_title(f"Δ {metric}  ({direction})", fontsize=12, fontweight="bold")
     ax.set_xlabel("")
     ax.tick_params(axis="x", rotation=20)
-    ax.set_ylabel(f"Δ {metric} (variant − RF Only)")
+    ax.set_ylabel(f"Δ {metric} (variant − SVM Only)")
 
     for xi, v in enumerate(V3):
         row = results_full[(results_full["Variant"] == v) &
@@ -335,7 +335,7 @@ for ax, metric in zip(axes, ["FPR", "FNR"]):
     ax.axhline(0, color="black", linewidth=1.8, linestyle="--")
     ax.set_title(f"Δ {metric} per fold", fontsize=12, fontweight="bold")
     ax.set_xlabel("Fold ratio  (50 = 5 reps × 10 folds)")
-    ax.set_ylabel(f"Δ {metric} (variant − RF Only)")
+    ax.set_ylabel(f"Δ {metric} (variant − SVM Only)")
     ax.legend(fontsize=9)
 
 plt.tight_layout()

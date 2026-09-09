@@ -17,9 +17,9 @@ df_results = pd.read_csv(os.path.join(RESULTS_DIR, 'roq_hybrid_fuzzy_results.csv
 df_results = df_results.sort_values(by=["F1-Score", "ROC-AUC"], ascending=False).reset_index(drop=True)
 
 palette = {
+    "Fuzzy + KNN + Distance": "#2ca02c",
     "Fuzzy + RF + Distance": "#1f77b4",
     "Fuzzy + SVM + Distance": "#ff7f0e",
-    "Fuzzy + MLP + Distance": "#2ca02c",
     "Fuzzy + AE + Distance": "#d62728",
 }
 

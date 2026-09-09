@@ -9,7 +9,7 @@ import scipy.stats as st
 from scipy.spatial.distance import cdist
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score
@@ -63,10 +63,10 @@ def make_minmax_scaler(v_ref):
     mn, mx = v_ref.min(), v_ref.max()
     return lambda v: np.clip((v- mn) / (mx - mn + 1e-9), 0, 1)
 
-def fuzzy_rf_distance(rf_score_te, dist_te, rf_score_tr, dist_tr):
-    scale_rf = make_minmax_scaler(rf_score_tr)
+def fuzzy_svm_distance(svm_score_te, dist_te, svm_score_tr, dist_tr):
+    scale_rf = make_minmax_scaler(svm_score_tr)
     scale_dist = make_minmax_scaler(dist_tr)
-    rs = scale_rf(rf_score_te)
+    rs = scale_rf(svm_score_te)
     ds = scale_dist(dist_te)
 
     rf_low  = trapmf(rs, 0.00, 0.00, 0.25, 0.45)
@@ -103,9 +103,9 @@ def fuzzy_rf_distance(rf_score_te, dist_te, rf_score_tr, dist_tr):
     den = agg.sum(axis=1) + 1e-9
     return num / den
 
-def fuzzy_rf_only(rf_score_te, rf_score_tr):
-    scale_rf = make_minmax_scaler(rf_score_tr)
-    rs = scale_rf(rf_score_te)
+def fuzzy_svm_only(svm_score_te, svm_score_tr):
+    scale_rf = make_minmax_scaler(svm_score_tr)
+    rs = scale_rf(svm_score_te)
 
     u = np.linspace(0, 1, 1000)
 
@@ -164,7 +164,7 @@ rskf = RepeatedStratifiedKFold(
     n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=SEED
 )
 
-VARIANTS = ["RF Only", "RF + Distance", "Fuzzy + RF", "Fuzzy + RF + Distance"]
+VARIANTS = ["SVM Only", "SVM + Distance", "Fuzzy + SVM", "Fuzzy + SVM + Distance"]
 fold_results = {v: [] for v in VARIANTS}
 
 for fold_idx, (train_idx, test_idx) in enumerate(rskf.split(X, y)):
@@ -180,13 +180,10 @@ for fold_idx, (train_idx, test_idx) in enumerate(rskf.split(X, y)):
     X_te_s   = sc.transform(X_te)
 
     
-    rf = RandomForestClassifier(
-        n_estimators=200, max_depth=15,
-        n_jobs=-1, random_state=SEED
-    )
-    rf.fit(X_tr_s, y_tr)
-    rf_prob_tr = rf.predict_proba(X_tr_s)[:, 1]
-    rf_prob_te = rf.predict_proba(X_te_s)[:, 1]
+    svm  = SVC(kernel="rbf", probability=True, class_weight="balanced", random_state=SEED)
+    svm.fit(X_tr_s, y_tr)
+    svm_prob_tr = svm.predict_proba(X_tr_s)[:, 1]
+    svm_prob_te = svm.predict_proba(X_te_s)[:, 1]
 
     
     c_benign = robust_centroid(X_tr_s[y_tr == 0])
@@ -200,28 +197,28 @@ for fold_idx, (train_idx, test_idx) in enumerate(rskf.split(X, y)):
     dist_tr   = dist_fn(X_tr_s)
     dist_te   = dist_fn(X_te_s)
 
-    scale_rf = make_minmax_scaler(rf_prob_tr)
+    scale_rf = make_minmax_scaler(svm_prob_tr)
     scale_dist = make_minmax_scaler(dist_tr)
 
-    score_rf = rf_prob_te
-    score_rf_dist = 0.7 * scale_rf(rf_prob_te) + 0.3 * scale_dist(dist_te)
-    score_fuzzy_rf = fuzzy_rf_only(rf_prob_te, rf_prob_tr)
-    score_fuzzy_rfd = fuzzy_rf_distance(rf_prob_te, dist_te, rf_prob_tr, dist_tr)
+    score_svm = svm_prob_te
+    score_svm_dist = 0.7 * scale_rf(svm_prob_te) + 0.3 * scale_dist(dist_te)
+    score_fuzzy_svm = fuzzy_svm_only(svm_prob_te, svm_prob_tr)
+    score_fuzzy_svm_d = fuzzy_svm_distance(svm_prob_te, dist_te, svm_prob_tr, dist_tr)
 
-    score_rf_dist_tr = 0.7 * scale_rf(rf_prob_tr) + 0.3 * scale_dist(dist_tr)
-    score_fuzzy_rf_tr = fuzzy_rf_only(rf_prob_tr, rf_prob_tr)
-    score_fuzzy_rfd_tr = fuzzy_rf_distance(rf_prob_tr, dist_tr, rf_prob_tr, dist_tr)
+    score_svm_dist_tr = 0.7 * scale_rf(svm_prob_tr) + 0.3 * scale_dist(dist_tr)
+    score_fuzzy_svm_tr = fuzzy_svm_only(svm_prob_tr, svm_prob_tr)
+    score_fuzzy_svm_d_tr = fuzzy_svm_distance(svm_prob_tr, dist_tr, svm_prob_tr, dist_tr)
 
-    t_rf = best_threshold_on_val(y_tr, rf_prob_tr)
-    t_rf_dist = best_threshold_on_val(y_tr, score_rf_dist_tr)
-    t_fuzzy_rf = best_threshold_on_val(y_tr, score_fuzzy_rf_tr)
-    t_fuzzy_rfd = best_threshold_on_val(y_tr, score_fuzzy_rfd_tr)
+    t_svm = best_threshold_on_val(y_tr, svm_prob_tr)
+    t_svm_dist = best_threshold_on_val(y_tr, score_svm_dist_tr)
+    t_fuzzy_svm = best_threshold_on_val(y_tr, score_fuzzy_svm_tr)
+    t_fuzzy_svm_d = best_threshold_on_val(y_tr, score_fuzzy_svm_d_tr)
 
     for variant, score, thresh in [
-        ("RF Only",                score_rf,             t_rf),
-        ("RF + Distance",          score_rf_dist,        t_rf_dist),
-        ("Fuzzy + RF",             score_fuzzy_rf,       t_fuzzy_rf),
-        ("Fuzzy + RF + Distance",  score_fuzzy_rfd,  t_fuzzy_rfd),
+        ("SVM Only",               score_svm,           t_svm),
+        ("SVM + Distance",         score_svm_dist,      t_svm_dist),
+        ("Fuzzy + SVM",            score_fuzzy_svm,     t_fuzzy_svm),
+        ("Fuzzy + SVM + Distance", score_fuzzy_svm_d,   t_fuzzy_svm_d),
     ]:
         pred = (score >= thresh).astype(int)
         m    = compute_metrics(y_te, pred, score)
@@ -288,13 +285,13 @@ print(all_folds_csv)
 
 
 PALETTE = {
-    "RF Only":               "#4C78A8",
-    "RF + Distance":         "#F58518",
-    "Fuzzy + RF":            "#54A24B",
-    "Fuzzy + RF + Distance": "#E45756"
+    "SVM Only":               "#4C78A8",
+    "SVM + Distance":         "#F58518",
+    "Fuzzy + SVM":            "#54A24B",
+    "Fuzzy + SVM + Distance": "#E45756"
 }
 
-ORDER = ["RF Only", "RF + Distance", "Fuzzy + RF", "Fuzzy + RF + Distance"]
+ORDER = ["SVM Only", "SVM + Distance", "Fuzzy + SVM", "Fuzzy + SVM + Distance"]
 
 
 fig, axes = plt.subplots(2, 4, figsize=(24, 10))
