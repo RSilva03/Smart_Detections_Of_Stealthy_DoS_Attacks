@@ -44,12 +44,12 @@ echo ">>> [9/12] RoQ - Hybrid Fuzzy Model"
 python scripts/hybrid/roq_hybrid_fuzzy.py
 
 echo ""
-echo ">>> [10/12] RoQ - RSKF Ablation (RF Variants)"
-python scripts/hybrid/roq_ablation_kfold_rf.py
+echo ">>> [10/12] RoQ - RSKF Ablation (SVM Variants)"
+python scripts/hybrid/roq_ablation_kfold_svm.py
 
 echo ""
-echo ">>> [11/12] RoQ - Statistical Analysis (Wilcoxon + corrections)"
-python scripts/hybrid/wilcoxon_multiple_corrections.py
+echo ">>> [11/12] RoQ - Statistical Analysis (Wilcoxon Test)"
+python scripts/hybrid/wilcoxon_test.py
 
 echo ""
 echo ">>> [12/12] RoQ - Visualisation Results"

@@ -46,9 +46,9 @@ project/
 │   |
 |   └── hybrid/
 |   |   ├── roq_hybrid_fuzzy.py                    # Hybrid Fuzzy RF model (Hybrid)
-│   |   ├── roq_ablation_kfold_rf.py               # RSKF ablation RF variants (Hybrid)
+│   |   ├── roq_ablation_kfold_svm.py               # RSKF ablation RF variants (Hybrid)
 |   |   ├── visualize_hybrid_results.py            # Visualisation (Hybrid)
-│   |   └── wilcoxon_multiple_corrections.py       # Statistical significance tests (Hybrid)
+│   |   └── wilcoxon_test.py       # Statistical significance tests (Hybrid)
 │
 ├── results/
 │   └── (auto-generated CSVs and plots)
@@ -220,7 +220,7 @@ Outputs:
 ### RoQ — RSKF Ablation (RF variants)
 
 ```bash
-python scripts/hybrid/roq_ablation_kfold_rf.py
+python scripts/hybrid/roq_ablation_kfold_svm.py
 ```
 Outputs:
 - `results/roq_hybrid_rskf_summary.csv`
@@ -247,7 +247,7 @@ Outputs:
 ### Statistical Analysis (Wilcoxon + corrections)
 
 ```bash
-python scripts/hybrid/wilcoxon_multiple_corrections.py
+python scripts/hybrid/wilcoxon_test.py
 ```
 Outputs:
 - `results/roq_wilcoxon_bonferroni_results.csv`
@@ -279,8 +279,8 @@ python scripts/roq/ml_roq_unsupervised.py && \
 python scripts/roq/roq_feature_importance.py && \
 python scripts/hybrid/roq_hybrid_fuzzy.py && \
 python scripts/hybrid/visualize_hybrid_results.py && \
-python scripts/hybrid/roq_ablation_kfold_rf.py && \
-python scripts/hybrid/wilcoxon_multiple_corrections.py
+python scripts/hybrid/roq_ablation_kfold_svm.py && \
+python scripts/hybrid/wilcoxon_test.py
 ```
 
 ### Setup on a fresh Ubuntu 22.04 VM
@@ -313,7 +313,7 @@ bash run_all.sh
 | Unsupervised RoQ | ~5–15 min |
 | Hybrid Fuzzy Model | ~5–10 min |
 | RSKF Ablation (50 folds) | ~15–30 min |
-| Wilcoxon + corrections | ~1–2 min |
+| Wilcoxon test | ~1–2 min |
 | **Total** | **~35–75 min** |
 
 ---
