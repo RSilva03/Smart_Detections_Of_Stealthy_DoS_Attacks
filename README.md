@@ -260,11 +260,78 @@ Outputs:
 
 ### RoQ Traffic Generator (data collection utility)
 
+The generator sends periodic HTTP request bursts to the configured endpoint and
+writes one CSV row per request. Only run it against `localhost`, a test machine,
+or another system for which you have explicit authorization. Do not use the
+default settings against a production or third-party service.
+
+#### Quick local test
+
+1. Open a terminal in the repository root and start a temporary HTTP server:
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   python -m http.server 8080
+   ```
+
+   **Linux/macOS:**
+
+   ```bash
+   python3 -m http.server 8080
+   ```
+
+2. Open a second terminal in the repository root and run a short, low-rate test:
+
+   ```powershell
+   python scripts/roq/roq_generator.py `
+     --target 127.0.0.1 `
+     --port 8080 `
+     --url /README.md `
+     --period 2 `
+     --burst-duration 0.5 `
+     --burst-rate 10 `
+     --cycles 2 `
+     --log results/roq_generator_test.csv
+   ```
+
+   On Linux/macOS, use `python3` and a backslash (`\`) for line continuation,
+   or run the command on one line:
+
+   ```bash
+   python3 scripts/roq/roq_generator.py --target 127.0.0.1 --port 8080 --url /README.md --period 2 --burst-duration 0.5 --burst-rate 10 --cycles 2 --log results/roq_generator_test.csv
+   ```
+
+3. Confirm that the generator reports successful requests and that
+   `results/roq_generator_test.csv` was created. The CSV should contain the
+   columns `cycle`, `ts`, `offset_in_burst`, `latency_ms`, `status`, and
+   `phase`. Stop the temporary server with `Ctrl+C` when the test is complete.
+
+The test above lasts approximately four seconds. It validates that the
+generator can connect to an HTTP endpoint, produce requests, and save its log;
+it does not reproduce the full traffic intensity used in the experiments.
+
+#### Run against an authorized test target
+
 ```bash
-python scripts/roq/roq_generator.py --target <ip> --port 80 --url /index.html
+python scripts/roq/roq_generator.py --target <ip> --port 80 --url /index.html --log roq_attack_log.csv
 ```
+
+Useful parameters:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--target` | Destination IP address or hostname | `10.0.2.15` |
+| `--port` | Destination HTTP port | `80` |
+| `--url` | Requested path | `/index.html` |
+| `--period` | Time between burst starts, `T`, in seconds | `10` |
+| `--burst-duration` | Duration of each burst, `tau`, in seconds | `1.5` |
+| `--burst-rate` | Requests per second during a burst, `delta` | `300` |
+| `--cycles` | Number of burst/idle cycles | `30` |
+| `--log` | Output CSV path | `roq_attack_log.csv` |
+
 Outputs:
-- `roq_attack_log.csv` (saved in current working directory by default, or custom `--log` path)
+- `roq_attack_log.csv` (or the path supplied with `--log`)
 
 ### Run all experiments sequentially
 
@@ -332,6 +399,14 @@ bash run_all.sh
 | scipy | Wilcoxon signed-rank test |
 | pandas / numpy | Data handling |
 | matplotlib / seaborn | Visualisation |
+
+---
+
+## Thesis Report
+
+The complete written thesis report is available here:
+
+- [Thesis Report](<Thesis Report.pdf>)
 
 ---
 
